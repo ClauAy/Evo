@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Desperdicios - Dark Style</title>
+
+    <!-- Bootstrap CSS -->
+    <link
+      rel="stylesheet"
+      href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css"
+    />
+    <link rel="stylesheet" href="assets/styles.css" />
+</head>
+
+    <!-- ApexCharts -->
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <style>
+      body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #4e505000;
+            padding: 20px;
+            margin: 0;
+      }
+      .container, .row, .col-12, .col-md-6 {
+            width: 100%;
+            padding: 0;
+      }
+      .chart-container {
+            width: 100%;
+            padding: 0;
+            margin: 0;
+      }
+      .row {
+            margin: 0;
+            padding: 0;
+      }
+      .col-12 {
+            padding: 0;
+      }
+      .apexcharts-canvas{
+            width: 100% !important;
+            max-width: 100% !important;
+            height: 100% !important;
+      }
+      .dashboard-title {
+            font-family: 'Roboto', sans-serif;
+            font-size: 3rem; /* Aumentar tamaño */
+            font-weight: 600; /* Hacerlo más grueso para destacar */
+            color: #0059b1; /* Un color sobrio y profesional */
+            text-align: center; /* Centramos el título */
+            margin-bottom: 20px; /* Espacio entre el título y los gráficos */
+      }
+      .filter-container {
+            margin-bottom: 30px;
+      }
+    </style>
+</head>
+<body>
+
+  <h1 class="dashboard-title">Dashboard de Desperdicios</h1>
+
+</body>
+</html>
+
+<!-- Filtro para seleccionar hotel -->
+<div class="d-flex justify-content-center filter-container">
+    <label for="filter-hotel" class="mr-2">Filtrar por Hotel:</label>
+    <select id="filter-hotel" onchange="filtrarHotel()">
+        <option value="todos">Todos los Hoteles</option>
+        <!-- Generar dinámicamente las opciones de hoteles desde Django -->
+        {% for hotel in nombres_hoteles %}
+        <option value="{{ hotel }}">{{ hotel }}</option>
+        {% endfor %}
+    </select>
+</div>
+
+
+<!-- Contenedor de los gráficos -->
+<div class="container-fluid">
+    <div class="row">
+        <!-- Primera fila de gráficos -->
+        <div class="col-md-12">
+            <div id="chart-hotel" class="chart-container"></div>
+        </div>
+        <div class="col-md-12">
+            <div id="chart-hotel-tipo" class="chart-container"></div>
+        </div>
+    </div>
+    <div class="row">
+        <!-- Segunda fila de gráficos -->
+        <div class="col-md-6">
+            <div id="chart-tipo" class="chart-container"></div>
+        </div>
+        <div class="col-md-6">
+            <div id="chart-otros" class="chart-container"></div>
+        </div>
+    </div>
+    <div class="row">
+        <!-- Tercera fila de gráficos -->
+        <div class="col-md-6">
+            <div id="chart-meses" class="chart-container"></div>
+        </div>
+        <div class="col-md-6">
+            <div id="chart-varianza" class="chart-container"></div>
+        </div>
+    </div>
+    <div class="row">
+        <!-- Cuarta fila de gráficos -->
+        <div class="col-md-12">
+            <div id="chart-evolucion" class="chart-container"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Código JavaScript -->
+<div id="chart-hotel"></div>
+<div id="chart-hotel-tipo"></div>
+<div id="chart-tipo"></div>
+<div id="chart-otros"></div>
+<div id="chart-meses"></div>
+<div id="chart-varianza"></div>
+<div id="chart-evolucion"></div> 
+
+<script>
+// Función para formatear números
+function formatNumber(value) {
+    if (value >= 1000000) {
+        return (value / 1000000).toFixed(1) + 'M'; // Millones
+    } else if (value >= 1000) {
+        return (value / 1000).toFixed(1) + 'k'; // Miles
+    }
+    return value;
+}
+
+// Función para filtrar por hotel
+function filtrarHotel() {
+    var hotelSeleccionado = document.getElementById('filter-hotel').value;
+    
+    // Si "todos" está seleccionado, mostrar todos los hoteles
+    if (hotelSeleccionado === 'todos') {
+        chartHotel.updateOptions({
+            xaxis: {
+                categories: nombresHoteles
+            },
+            series: [{
+                data: desperdicios
+            }]
+        });
+
+        // Actualizar gráfico de hoteles con desperdicio más relevante
+        chartHotelTipo.updateOptions({
+            series: datosGraficoHotelTipo.map((data, index) => ({
+                name: nombresHoteles[index],
+                data: data
+            }))
+        });
+    } else {
+        var indiceHotel = nombresHoteles.indexOf(hotelSeleccionado);
+        var datosFiltrados = [desperdicios[indiceHotel]];
+
+        chartHotel.updateOptions({
+            xaxis: {
+                categories: [hotelSeleccionado]
+            },
+            series: [{
+                data: datosFiltrados
+            }]
+    });
+    // Filtrar gráfico de desperdicio por tipo de hotel
+    var datosGraficoHotelTipoFiltrados = datosGraficoHotelTipo[indiceHotel];
+    chartHotelTipo.updateOptions({
+        series: [{
+            name: hotelSeleccionado,
+            data: datosGraficoHotelTipoFiltrados
+        }]
+    });
+}
+}
+
+// Encontrar el hotel con mayor desperdicio
+var desperdicios = {{ desperdicio_por_hotel_dict|safe }};
+var nombresHoteles = {{ nombres_hoteles|safe }};
+var hotelLider = '';
+var maxDesperdicio = Math.max(...desperdicios);
+
+for (var i = 0; i < desperdicios.length; i++) {
+    if (desperdicios[i] === maxDesperdicio) {
+        hotelLider = nombresHoteles[i];
+        break;
+    }
+}
+
+// Gráfica de desperdicio por hotel con anotación del hotel líder
+var opcionesHotel = {
+    series: [{
+        name: 'Desperdicio',
+        data: desperdicios  // Toneladas
+    }],
+    chart: {
+        type: 'bar',
+        height: 600
+    },
+    xaxis: {
+        categories: nombresHoteles
+    },
+    yaxis: {
+        labels: {
+            formatter: function (val) {
+                return formatNumber(val); // Formatear los valores del eje Y
+            }
+        }
+    },
+    title: {
+        text: 'Desperdicio por Hotel',
+        align: 'center'
+    },
+    annotations: {
+        yaxis: [{
+            y: maxDesperdicio,
+            borderColor: '#FF4560',
+            label: {
+                borderColor: '#FF4560',
+                style: {
+                    color: '#fff',
+                    background: '#FF4560'
+                },
+                text: 'Hotel Líder: ' + hotelLider
+            }
+        }]
+    }
+};
+
+var chartHotel = new ApexCharts(document.querySelector("#chart-hotel"), opcionesHotel);
+chartHotel.render();
+
+// Datos de los hoteles y tipos de desperdicio 
+var datosGraficoHotelTipo = {{ datos_grafico_hotel_tipo|safe }};
+var nombresTiposParaGrafico = {{ nombres_tipos_para_grafico|safe }};
+var nombresHoteles = {{ nombres_hoteles|safe }};
+
+// Configuración del gráfico
+var opcionesHotelTipo = {
+    series: datosGraficoHotelTipo.map((data, index) => ({
+        name: nombresHoteles[index],
+        data: data
+    })),
+    chart: {
+        type: 'bar',
+        height: 600
+    },
+    xaxis: {
+        categories: nombresTiposParaGrafico,
+        title: {
+            text: 'Hoteles'
+        }
+    },
+    yaxis: {
+        title: {
+            text: 'Peso (Toneladas)'
+        }
+    },
+    title: {
+        text: 'Hoteles con desperdicio más relevantes',
+        align: 'center'
+    },
+    dataLabels: {
+        enabled: true, // Habilitar etiquetas de datos
+        formatter: function (val) {
+            return val.toFixed(0); // Mostrar solo las dos primeras cifras
+        },
+        style: {
+            colors: ['#fff'], // Color de las etiquetas
+            fontSize: '12px', // Tamaño de fuente
+            fontWeight: 'bold' // Peso de la fuente
+        }
+    },
+    
+};
+
+// Crear y renderizar el gráfico
+var chartHotelTipo = new ApexCharts(document.querySelector("#chart-hotel-tipo"), opcionesHotelTipo);
+chartHotelTipo.render();
+
+
+// Gráfica de desperdicio por tipo (Más relevantes)
+var tiposDesperdicio = {{ desperdicio_por_tipo_dict|safe }};
+var nombresTipos = {{ nombres_tipos|safe }};
+var numTiposRepresentativos = 10;
+
+var tiposRepresentativos = Object.entries(tiposDesperdicio)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, numTiposRepresentativos);
+
+var tiposParaGrafico = tiposRepresentativos.map(item => nombresTipos[item[0]]);
+var desperdiciosParaGrafico = tiposRepresentativos.map(item => item[1]);
+
+var tiposRestantes = Object.entries(tiposDesperdicio)
+    .filter(item => !tiposRepresentativos.map(rep => rep[0]).includes(item[0]))
+    .sort((a, b) => b[1] - a[1]);
+
+var desperdiciosOtros = tiposRestantes.map(item => item[1]);
+var nombresOtros = tiposRestantes.map(item => nombresTipos[item[0]]);
+
+var hotelesLideresPorTipo = {};
+tiposRepresentativos.forEach(item => {
+    var tipo = item[0];
+    var maxPeso = item[1];
+    var indice = Object.keys(tiposDesperdicio).indexOf(tipo);
+    hotelesLideresPorTipo[tipo] = nombresHoteles[indice];
+});
+
+var opcionesTipo = {
+    series: [{
+        name: 'Desperdicio',
+        data: desperdiciosParaGrafico
+    }],
+    chart: {
+        type: 'bar',
+        height: 350
+    },
+    xaxis: {
+        categories: tiposParaGrafico,
+    },
+    yaxis: {
+        title: {
+            text: 'Desperdicio'
+        },
+        labels: {
+            formatter: function (val) {
+                return formatNumber(val);
+            }
+        }
+    },
+    colors: ['#008FFB', '#00E396', '#FEB019', '#FF4560', '#775DD0'],
+    title: {
+        text: 'Desperdicios más Relevantes con peso',
+        align: 'center'
+    },
+    plotOptions: {
+        bar: {
+            horizontal: true,
+            dataLabels: {
+                position: 'inside',
+                formatter: function (val, { dataPointIndex }) {
+                    var tipo = tiposParaGrafico[dataPointIndex];
+                    var hotelLider = hotelesLideresPorTipo[tipo];
+                    return ` ${formatNumber(val)} `;
+                }
+            }
+        }
+    },
+    tooltip: {
+        y: {
+            formatter: function (val, { dataPointIndex }) {
+                var tipo = tiposParaGrafico[dataPointIndex];
+                var hotelLider = hotelesLideresPorTipo[tipo];
+                return `${formatNumber(val)} `;
+            }
+        }
+    }
+};
+
+var chartTipo = new ApexCharts(document.querySelector("#chart-tipo"), opcionesTipo);
+chartTipo.render();
+
+// Gráfica de desperdicio "Otros"
+var opcionesOtros = {
+    series: [{
+        name: 'Desperdicio (Otros)',
+        data: desperdiciosOtros
+    }],
+    chart: {
+        type: 'bar',
+        height: 350
+    },
+    xaxis: {
+        categories: nombresOtros,
+    },
+    yaxis: {
+        title: {
+            text: 'Desperdicio'
+        },
+        labels: {
+            formatter: function (val) {
+                return formatNumber(val);
+            }
+        }
+    },
+    colors: ['#D7A99E', '#00E396', '#FEB019', '#FF4560'],
+    title: {
+        text: 'Desperdicios (Otros)',
+        align: 'center'
+    },
+    plotOptions: {
+        bar: {
+            horizontal: true,
+            dataLabels: {
+                position: 'inside',
+                formatter: function (val, { dataPointIndex }) {
+                    return ` ${formatNumber(val)} `;
+                }
+            }
+        }
+    },
+    tooltip: {
+        y: {
+            formatter: function (val, { dataPointIndex }) {
+                return `${formatNumber(val)} `;
+            }
+        }
+    }
+};
+
+var chartOtros = new ApexCharts(document.querySelector("#chart-otros"), opcionesOtros);
+chartOtros.render();
+
+// Gráfica de registros por mes y por hotel
+var opcionesMeses = {
+    series: [
+        {% for hotel_data in registros_por_mes_y_hotel %}
+        {
+            name: '{{ hotel_data.name }}',
+            data: {{ hotel_data.data|safe }}
+        },
+        {% endfor %}
+    ],
+    chart: {
+        type: 'line',
+        height: 350
+    },
+    xaxis: {
+        categories: {{ nombres_meses|safe }}
+    },
+    yaxis: {
+        labels: {
+            formatter: function (val) {
+                return formatNumber(val); // Formatear los valores del eje Y
+            }
+        }
+    },
+    title: {
+        text: 'Registros por Mes y por Hotel',
+        align: 'center'
+    }
+};
+
+// Crear y renderizar la gráfica
+var chartMeses = new ApexCharts(document.querySelector("#chart-meses"), opcionesMeses);
+chartMeses.render();
+
+// Gráfica de varianza
+
+var opcionesVarianza = {
+    series: [{
+        name: 'Varianza',
+        data: {{ media_varianza_dict.var|safe }}  // Toneladas
+    }],
+    chart: {
+        type: 'bar',
+        height: 350
+    },
+    plotOptions: {
+        bar: {
+            horizontal: true, // Barras horizontales
+            dataLabels: {
+                position: 'inside'
+            }
+        }
+    },
+    xaxis: {
+        categories: {{ nombres_media_varianza|safe }},
+        labels: {
+            rotate: -45, // Rotar etiquetas si son largas
+            style: {
+                fontSize: '12px'
+            }
+        }
+    },
+    yaxis: {
+        labels: {
+            formatter: function (val) {
+                return formatNumber(val); // Formatear los valores del eje Y
+            }
+        }
+    },
+    dataLabels: {
+        enabled: true,
+        formatter: function (val) {
+            return formatNumber(val); // Mostrar el valor en las etiquetas
+        },
+        style: {
+            colors: ['#000']
+        }
+    },
+    colors: ['#00E396', '#FEB019', '#FF4560', '#775DD0'], // Escala de colores
+    title: {
+        text: 'Varianza de Desperdicio por Hotel',
+        align: 'center'
+    },
+    subtitle: {
+        text: 'La varianza mide la fluctuación en el desperdicio: mayor varianza indica mayor inestabilidad.',
+        align: 'center'
+    },
+    tooltip: {
+        y: {
+            formatter: function(val) {
+                return val.toFixed(2) + " toneladas"; // Tooltip para mostrar con formato
+            }
+        }
+    }
+};
+
+var chartVarianza = new ApexCharts(document.querySelector("#chart-varianza"), opcionesVarianza);
+chartVarianza.render();
+
+// Formato más corto para las fechas (por ejemplo, '23-Oct' en lugar de '2024-10-23')
+var fechasEvolucionCortas = {{ fechas_evolucion|safe }}.map(function(fecha) {
+    var date = new Date(fecha);
+    var opciones = { day: 'numeric', month: 'long' }; // Mostrar día y mes abreviado
+    return date.toLocaleDateString('es-ES', opciones);
+});
+
+// Nueva gráfica de evolución del peso por día
+var opcionesEvolucion = {
+    series: [{
+        name: 'Peso Desperdiciado',
+        data: {{ evolucion_diaria_dict|safe }}  // Toneladas
+    }],
+    chart: {
+        type: 'line',
+        height: 350
+    },
+    xaxis: {
+        categories: fechasEvolucionCortas, // Fechas con formato corto
+        labels: {
+            rotate: -45,  // Rotar las etiquetas para mejor visibilidad
+            style: {    
+                fontSize: '12px'
+            }
+        }
+    },
+    yaxis: {
+        labels: {
+            formatter: function (val) {
+                return formatNumber(val); // Formatear los valores del eje Y
+            }
+        }
+    },
+    title: {
+        text: 'Evolución del Peso diario',
+        align: 'center'
+    }
+};
+var chartEvolucion = new ApexCharts(document.querySelector("#chart-evolucion"), opcionesEvolucion);
+chartEvolucion.render();
+
+</script>
+</body>
+</html>
+
